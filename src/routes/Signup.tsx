@@ -1,20 +1,19 @@
-import { Navigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import { useState } from "react";
 import { API_URL } from "../auth/constants";
 import DefaultLayout from "../layout/DefaultLayout";
+import { AuthResponseError } from "../types/types";
 
 export default function Signup() {
     
     const [name, setName] = useState("");
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
+    const [errorResponse, setErrorResponse] = useState("");
 
     const auth = useAuth();
-
-    if (auth.isAuntenticated){
-        return <Navigate to="/dashboard"></Navigate>
-    }
+    const goTo = useNavigate();
 
     async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
@@ -34,8 +33,13 @@ export default function Signup() {
 
             if (response.ok) {
                 console.log("User created successfully!");
+                setErrorResponse("");
+                goTo("/")
             } else {
                 console.log("Something went wrong");
+                const json = await response.json() as AuthResponseError;
+                setErrorResponse(json.body.error);
+
             }
         } catch (error) {
             console.log(error);
@@ -51,7 +55,7 @@ export default function Signup() {
         <DefaultLayout>
             <form className="form" onSubmit={handleSubmit}>
                 <h1>Signup</h1>
-                
+                { !!errorResponse && <div className="errorMessage">{errorResponse}</div>}
                 <label>Name</label>
                 <input type="text" value={name} onChange={(e) => setName(e.target.value)}/>
 
