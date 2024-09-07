@@ -12,12 +12,14 @@ const AuthContext = createContext({
     getRefreshToken: () => {},
     saveUser: (userData: AuthResponse) => {},
     getUser: () => ({} as User | undefined),
+    signOut: () => {},
 });
 
 export function AuthProvider({children}: AuthProviderProps) {
     const [isAuntenticated, setIsAuntenticated] = useState(false);
-    const [accessToken, setAccessToken] = useState<String>("");
+    const [accessToken, setAccessToken] = useState<string>("");
     const [user, setUser] = useState<User>();
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
         checkAuth();
@@ -27,6 +29,10 @@ export function AuthProvider({children}: AuthProviderProps) {
     async function checkAuth() {
         if (accessToken) {
             //usuario autenticado
+            const userInfo = await getUserInfo(accessToken);
+            if (userInfo){
+                saveSessionInfo(userInfo, accessToken, getRefreshToken()!);
+            }
         } else {
             const token = getRefreshToken();
             if (token){
@@ -39,9 +45,10 @@ export function AuthProvider({children}: AuthProviderProps) {
                 }
             }
         }
+        setIsLoading(false);
     }
 
-    async function requestNewAccessToken(refreshToken:string) {
+    async function requestNewAccessToken(refreshToken: string) {
         try {
             const response = await fetch(`${API_URL}/refresh-token`, {
                 method: "POST",
@@ -67,7 +74,7 @@ export function AuthProvider({children}: AuthProviderProps) {
         }
     }
 
-    async function getUserInfo(accessToken:string) {
+    async function getUserInfo(accessToken: string) {
         try {
             const response = await fetch(`${API_URL}/user`, {
                 method: "GET",
@@ -110,7 +117,7 @@ export function AuthProvider({children}: AuthProviderProps) {
         saveSessionInfo(userData.body.user, userData.body.accessToken, userData.body.refreshToken);
     }
 
-    function saveSessionInfo(userInfo:User, accessToken:String, refreshToken: String) {
+    function saveSessionInfo(userInfo:User, accessToken: string, refreshToken: string) {
         setAccessToken(accessToken);
         setUser(userInfo);
         localStorage.setItem("token", JSON.stringify(refreshToken));
@@ -121,9 +128,16 @@ export function AuthProvider({children}: AuthProviderProps) {
         return user;
     }
 
+    function signOut() {
+        setIsAuntenticated(false);
+        setAccessToken("");
+        setUser(undefined);
+        localStorage.removeItem("token");
+    }
+
     return (
-        <AuthContext.Provider value={{ isAuntenticated, getAccessToken, getRefreshToken, saveUser, getUser }}>
-            {children}
+        <AuthContext.Provider value={{ isAuntenticated, getAccessToken, getRefreshToken, saveUser, getUser, signOut }}>
+            {isLoading ? <div>Loading...</div> : children}
         </AuthContext.Provider>
     )
 }
